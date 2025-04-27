@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Countdown Timer</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #74ebd5 0%, #acb6e5 100%);
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        #timerText {
+            font-size: 3rem;
+            margin-bottom: 30px;
+            color: #fff;
+            font-weight: bold;
+        }
+        #controls button {
+            margin: 5px;
+            padding: 10px 20px;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background-color: #ffffff;
+            color: #333;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.2);
+            transition: background 0.3s;
+        }
+        #controls button:hover {
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="controls" style="display: none;">
+        <button onclick="startTimer()">Start Timer</button>
+        <button onclick="resetTimer()">Reset Timer</button>
+    </div>
+
+    <h1 id="timerText">Loading...</h1>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let timerStartTime = null;
+        let timerInterval = null;
+        const TOTAL_TIME = 86400; // 24 hours in seconds
+
+        // Get admin key from URL (maneet1304)
+        const urlParams = new URLSearchParams(window.location.search);
+        const adminKey = urlParams.get('admin');
+        const isAdmin = (adminKey === 'maneet1304'); // Secret key
+
+        if (isAdmin) {
+            document.getElementById('controls').style.display = 'block';
+        }
+
+        function startTimer() {
+            socket.emit('startTimer');
+        }
+
+        function resetTimer() {
+            socket.emit('resetTimer');
+        }
+
+        socket.on('timerState', (data) => {
+            timerStartTime = data.timerStartTime;
+            if (timerStartTime) {
+                startLocalTimer();
+            } else {
+                stopLocalTimer();
+            }
+        });
+
+        function startLocalTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+
+            timerInterval = setInterval(() => {
+                const now = Date.now();
+                const elapsed = Math.floor((now - timerStartTime) / 1000); // seconds elapsed
+                const remaining = TOTAL_TIME - elapsed; // remaining time in seconds
+
+                if (remaining <= 0) {
+                    document.getElementById('timerText').innerText = "00:00:00";
+                    clearInterval(timerInterval); // Stop the timer at 00:00:00
+                } else {
+                    document.getElementById('timerText').innerText = formatTime(remaining);
+                }
+            }, 1000);
+        }
+
+        function stopLocalTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            document.getElementById('timerText').innerText = "The event is yet to begin";
+        }
+
+        function formatTime(seconds) {
+            const hrs = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
+        }
+
+        function pad(num) {
+            return num.toString().padStart(2, '0');
+        }
+    </script>
+
+</body>
+</html>
